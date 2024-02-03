@@ -1,6 +1,6 @@
 # Set Repo Secrets
 
-This GitHub Action will set secrets to any repository
+This GitHub Action will set secrets to any repository that you have access to.
 
 ## Inputs
 
