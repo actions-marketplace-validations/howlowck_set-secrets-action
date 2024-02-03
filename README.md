@@ -18,7 +18,7 @@ This GitHub Action will set secrets to any repository that you have access to.
 
 ### `security-token`
 
-**Required** The PAT or auth token for either you or your organization. It's this identity that sets the secrets to the target repository. The scope should include "workflow" and "repo".
+**Required** The PAT or auth token for either you or your organization. It's this identity that sets the secrets to the target repository. The scope for Classic PAT should include "repo". For fine-grain PAT, include "secrets" and "variables" to the scope.
 
 ## Example Usage
 
