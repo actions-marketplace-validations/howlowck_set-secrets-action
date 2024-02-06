@@ -39,6 +39,13 @@ const octokit = new Octokit({
 console.log("\nStarting create-repo-action...");
 
 async function main(): Promise<void> {
+  const repoData = await octokit.rest.repos.get({
+    repo: repoName,
+    owner: repoOwner,
+  });
+
+  const { id: repoId } = repoData.data;
+
   if (envVarsToRepoSecrets.length > 0) {
     console.log("Setting repo secrets...");
     await _sodium.ready;
@@ -77,6 +84,22 @@ async function main(): Promise<void> {
           sodium.base64_variants.ORIGINAL,
         );
 
+        const nameParts = secretName
+          .split(":")
+          .map((_) => _.trim())
+          .filter((_) => !!_);
+
+        if (nameParts.length > 2) {
+          const [targetEnvironment, newSecretName] = nameParts;
+          return octokit.rest.actions.createOrUpdateEnvironmentSecret({
+            repository_id: repoId,
+            environment_name: targetEnvironment,
+            secret_name: newSecretName,
+            encrypted_value: encryptedValue,
+            key_id: publicKeyId,
+          });
+        }
+
         return octokit.rest.actions.createOrUpdateRepoSecret({
           owner: repoOwner,
           repo: repoName,
@@ -108,25 +131,59 @@ async function main(): Promise<void> {
           `Setting ${varName} to repo variable from env ${envName}...`,
         );
 
-        return octokit.rest.actions.getRepoVariable({
-          owner: repoOwner,
-          repo: repoName,
-          name: varName
-        }).then(() => {
-          return octokit.rest.actions.updateRepoVariable({
+        const nameParts = varName
+          .split(":")
+          .map((_) => _.trim())
+          .filter((_) => !!_);
+
+        if (nameParts.length > 2) {
+          const [targetEnvironment, newVarName] = nameParts;
+          return octokit.rest.actions
+            .getEnvironmentVariable({
+              repository_id: repoId,
+              environment_name: targetEnvironment,
+              name: newVarName,
+            })
+            .then(() => {
+              return octokit.rest.actions.updateEnvironmentVariable({
+                repository_id: repoId,
+                environment_name: targetEnvironment,
+                name: newVarName,
+                value: varValue,
+              });
+            })
+            .catch(() => {
+              return octokit.rest.actions.createEnvironmentVariable({
+                repository_id: repoId,
+                environment_name: targetEnvironment,
+                name: newVarName,
+                value: varValue,
+              });
+            });
+        }
+
+        return octokit.rest.actions
+          .getRepoVariable({
             owner: repoOwner,
             repo: repoName,
             name: varName,
-            value: varValue
+          })
+          .then(() => {
+            return octokit.rest.actions.updateRepoVariable({
+              owner: repoOwner,
+              repo: repoName,
+              name: varName,
+              value: varValue,
+            });
+          })
+          .catch(() => {
+            return octokit.rest.actions.createRepoVariable({
+              owner: repoOwner,
+              repo: repoName,
+              name: varName,
+              value: varValue,
+            });
           });
-        }).catch(() => {
-          return octokit.rest.actions.createRepoVariable({
-            owner: repoOwner,
-            repo: repoName,
-            name: varName,
-            value: varValue
-          });
-        });
       },
     );
 

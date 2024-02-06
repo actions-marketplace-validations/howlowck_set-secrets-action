@@ -14,11 +14,11 @@ This GitHub Action will set secrets to any repository that you have access to.
 
 ### `secrets-from-env`
 
-**Required** Set secrets from environment variables, the format is "TARGET_SECRET_NAME=ENV_NAME", separated by spaces
+**Required** Set secrets from environment variables. You can make it the secret an environment secret by prepending the secret name with the environment name (ie `Prod:...`). The format is "(Env:)TARGET_SECRET_NAME=ENV_NAME", separated by spaces.
 
 ### `vars-from-env`
 
-**Required** Set variables from environment variables, the format is "TARGET_VAR_NAME=ENV_NAME", separated by spaces
+**Required** Set variables from environment variables. You can make it the variable an environment secret by prepending the variable name with the environment name (ie `Prod:...`). the format is "(Env:)TARGET_VAR_NAME=ENV_NAME", separated by spaces
 
 ### `security-token`
 
@@ -30,15 +30,17 @@ This GitHub Action will set secrets to any repository that you have access to.
 env:
   ORG_TOKEN: ${{ secrets.ORG_TOKEN }}
   SOME_SECRET: some-secret-value
+  DB_CONN_STR: ${{ secrets.DB_CONNECTION}}
 runs-on: ubuntu-latest
 steps:
   - uses: actions/checkout@v3
-  - uses: howlowck/set-secrets-action@v1.2
+  - uses: howlowck/set-secrets-action@v1.4
     with:
       repo-owner: 'howlowck'
       repo-name: 'my-new-app'
       security-token: ${{ secrets.ORG_TOKEN }}
-      secrets-from-env: |-
+      secrets-from-env: >-
+        Prod:DB_CONN=DB_CONN_STR
         REPO_SEC_NAME_1=ORG_TOKEN
         REPO_SEC_NAME_2=SOME_SECRET
 ```
