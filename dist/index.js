@@ -61,7 +61,7 @@ const envVarsToRepoSecrets = secretsFromEnvRaw
     }
     return { secretName, envName };
 });
-const envVarsToRepoVariables = secretsFromEnvRaw
+const envVarsToRepoVariables = varsFromEnvRaw
     .split(" ")
     .map((_) => _.trim())
     .filter((_) => !!_)
