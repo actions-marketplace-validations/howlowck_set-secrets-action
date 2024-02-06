@@ -6,9 +6,10 @@ const securityToken = core.getInput("security-token");
 const repoOwner = core.getInput("repo-owner");
 const repoName = core.getInput("repo-name");
 const secretsFromEnvRaw = core.getInput("secrets-from-env");
+const varsFromEnvRaw = core.getInput("vars-from-env");
 
 const envVarsToRepoSecrets = secretsFromEnvRaw
-  .split(",")
+  .split(" ")
   .map((_) => _.trim())
   .filter((_) => !!_)
   .map((_) => {
@@ -17,6 +18,18 @@ const envVarsToRepoSecrets = secretsFromEnvRaw
       throw new Error(`Invalid secret mapping: ${_}`);
     }
     return { secretName, envName };
+  });
+
+const envVarsToRepoVariables = secretsFromEnvRaw
+  .split(" ")
+  .map((_) => _.trim())
+  .filter((_) => !!_)
+  .map((_) => {
+    const [varName, envName] = _.split("=");
+    if (!varName || !envName) {
+      throw new Error(`Invalid secret mapping: ${_}`);
+    }
+    return { varName, envName };
   });
 
 const octokit = new Octokit({
@@ -79,6 +92,49 @@ async function main(): Promise<void> {
     console.log("-----------------------------\n");
   } else {
     console.log("🔵 No secrets to set, skipping...");
+    console.log("-----------------------------\n");
+  }
+
+  if (envVarsToRepoVariables.length > 0) {
+    console.log("Setting repo variables...");
+    const variableRequests = envVarsToRepoVariables.map(
+      ({ varName, envName }) => {
+        const varValue = process.env[envName];
+        if (!varValue) {
+          throw new Error(`No such env: ${envName}`);
+        }
+
+        console.log(
+          `Setting ${varName} to repo variable from env ${envName}...`,
+        );
+
+        return octokit.rest.actions.getRepoVariable({
+          owner: repoOwner,
+          repo: repoName,
+          name: varName
+        }).then(() => {
+          return octokit.rest.actions.updateRepoVariable({
+            owner: repoOwner,
+            repo: repoName,
+            name: varName,
+            value: varValue
+          });
+        }).catch(() => {
+          return octokit.rest.actions.createRepoVariable({
+            owner: repoOwner,
+            repo: repoName,
+            name: varName,
+            value: varValue
+          });
+        });
+      },
+    );
+
+    await Promise.all(variableRequests);
+    console.log("✅ All variables set successfully!");
+    console.log("-----------------------------\n");
+  } else {
+    console.log("🔵 No variables to set, skipping...");
     console.log("-----------------------------\n");
   }
 }

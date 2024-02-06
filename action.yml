@@ -14,6 +14,10 @@ inputs:
     description: 'Set secrets from environment variables, the format is "TARGET_SECRET_NAME=ENV_NAME", separated by spaces'
     required: false
     default: ''
+  vars-from-env:
+    description: 'Set variables from environment variables, the format is "TARGET_SECRET_NAME=ENV_NAME", separated by spaces'
+    required: false
+    default: ''
 runs:
   using: 'node20'
   main: 'dist/index.js'
