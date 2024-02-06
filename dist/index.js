@@ -59,6 +59,14 @@ const envVarsToRepoSecrets = secretsFromEnvRaw
     if (!secretName || !envName) {
         throw new Error(`Invalid secret mapping: ${_}`);
     }
+    const nameParts = secretName
+        .split(":")
+        .map((_) => _.trim())
+        .filter((_) => !!_);
+    if (nameParts.length > 2) {
+        const [environment, newSecretName] = nameParts;
+        return { secretName: newSecretName, envName, environment };
+    }
     return { secretName, envName };
 });
 const envVarsToRepoVariables = varsFromEnvRaw
@@ -70,12 +78,22 @@ const envVarsToRepoVariables = varsFromEnvRaw
     if (!varName || !envName) {
         throw new Error(`Invalid secret mapping: ${_}`);
     }
+    const nameParts = varName
+        .split(":")
+        .map((_) => _.trim())
+        .filter((_) => !!_);
+    if (nameParts.length > 2) {
+        const [environment, newVarName] = nameParts;
+        return { varName: newVarName, envName, environment };
+    }
     return { varName, envName };
 });
 const octokit = new octokit_1.Octokit({
     auth: securityToken,
 });
 console.log("\nStarting create-repo-action...");
+console.log("secrets:", envVarsToRepoSecrets);
+console.log("variables:", envVarsToRepoVariables);
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const repoData = yield octokit.rest.repos.get({
@@ -91,7 +109,7 @@ function main() {
                 owner: repoOwner,
                 repo: repoName,
             });
-            const secretRequests = envVarsToRepoSecrets.map(({ secretName, envName }) => {
+            const secretRequests = envVarsToRepoSecrets.map(({ secretName, envName, environment }) => {
                 const secretValue = process.env[envName];
                 if (!secretValue) {
                     throw new Error(`No such env: ${envName}`);
@@ -102,17 +120,12 @@ function main() {
                 let encBytes = sodium.crypto_box_seal(binarySec, binaryKey);
                 // Convert encrypted Uint8Array to Base64
                 let encryptedValue = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
-                const nameParts = secretName
-                    .split(":")
-                    .map((_) => _.trim())
-                    .filter((_) => !!_);
-                if (nameParts.length > 2) {
-                    const [targetEnvironment, newSecretName] = nameParts;
-                    console.log(`Setting secret ${newSecretName} to ${targetEnvironment} environment from env ${envName}...`);
+                if (environment) {
+                    console.log(`Setting secret ${secretName} to ${environment} environment from env ${envName}...`);
                     return octokit.rest.actions.createOrUpdateEnvironmentSecret({
                         repository_id: repoId,
-                        environment_name: targetEnvironment,
-                        secret_name: newSecretName,
+                        environment_name: environment,
+                        secret_name: secretName,
                         encrypted_value: encryptedValue,
                         key_id: publicKeyId,
                     });
@@ -136,37 +149,32 @@ function main() {
         }
         if (envVarsToRepoVariables.length > 0) {
             console.log("Setting repo variables...");
-            const variableRequests = envVarsToRepoVariables.map(({ varName, envName }) => {
+            const variableRequests = envVarsToRepoVariables.map(({ varName, envName, environment }) => {
                 const varValue = process.env[envName];
                 if (!varValue) {
                     throw new Error(`No such env: ${envName}`);
                 }
-                const nameParts = varName
-                    .split(":")
-                    .map((_) => _.trim())
-                    .filter((_) => !!_);
-                if (nameParts.length > 2) {
-                    const [targetEnvironment, newVarName] = nameParts;
-                    console.log(`Setting variable ${newVarName} to ${targetEnvironment} environment from env ${envName}...`);
+                if (environment) {
+                    console.log(`Setting variable ${varName} to ${environment} environment from env ${envName}...`);
                     return octokit.rest.actions
                         .getEnvironmentVariable({
                         repository_id: repoId,
-                        environment_name: targetEnvironment,
-                        name: newVarName,
+                        environment_name: environment,
+                        name: varName,
                     })
                         .then(() => {
                         return octokit.rest.actions.updateEnvironmentVariable({
                             repository_id: repoId,
-                            environment_name: targetEnvironment,
-                            name: newVarName,
+                            environment_name: environment,
+                            name: varName,
                             value: varValue,
                         });
                     })
                         .catch(() => {
                         return octokit.rest.actions.createEnvironmentVariable({
                             repository_id: repoId,
-                            environment_name: targetEnvironment,
-                            name: newVarName,
+                            environment_name: environment,
+                            name: varName,
                             value: varValue,
                         });
                     });
