@@ -1,5 +1,5 @@
-name: 'Set GitHub Secrets'
-description: 'Set GitHub Secrets to a repository using various methods'
+name: 'Set Repo Secrets and Variables'
+description: 'Set GitHub Secrets and Variables to a repository using environment variables'
 branding:
   icon: 'shield'
   color: 'purple'

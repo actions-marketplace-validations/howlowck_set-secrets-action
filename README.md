@@ -33,7 +33,7 @@ env:
 runs-on: ubuntu-latest
 steps:
   - uses: actions/checkout@v3
-  - uses: howlowck/set-secrets@v1.0
+  - uses: howlowck/set-secrets-action@v1.2
     with:
       repo-owner: 'howlowck'
       repo-name: 'my-new-app'
