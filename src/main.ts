@@ -65,10 +65,6 @@ async function main(): Promise<void> {
           throw new Error(`No such env: ${envName}`);
         }
 
-        console.log(
-          `Setting ${secretName} to repo secret from env ${envName}...`,
-        );
-
         let binaryKey = sodium.from_base64(
           publicKey,
           sodium.base64_variants.ORIGINAL,
@@ -91,6 +87,9 @@ async function main(): Promise<void> {
 
         if (nameParts.length > 2) {
           const [targetEnvironment, newSecretName] = nameParts;
+          console.log(
+            `Setting secret ${newSecretName} to ${targetEnvironment} environment from env ${envName}...`,
+          );
           return octokit.rest.actions.createOrUpdateEnvironmentSecret({
             repository_id: repoId,
             environment_name: targetEnvironment,
@@ -99,6 +98,10 @@ async function main(): Promise<void> {
             key_id: publicKeyId,
           });
         }
+
+        console.log(
+          `Setting ${secretName} to repo secret from env ${envName}...`,
+        );
 
         return octokit.rest.actions.createOrUpdateRepoSecret({
           owner: repoOwner,
@@ -127,9 +130,7 @@ async function main(): Promise<void> {
           throw new Error(`No such env: ${envName}`);
         }
 
-        console.log(
-          `Setting ${varName} to repo variable from env ${envName}...`,
-        );
+        
 
         const nameParts = varName
           .split(":")
@@ -138,6 +139,9 @@ async function main(): Promise<void> {
 
         if (nameParts.length > 2) {
           const [targetEnvironment, newVarName] = nameParts;
+          console.log(
+            `Setting variable ${newVarName} to ${targetEnvironment} environment from env ${envName}...`,
+          );
           return octokit.rest.actions
             .getEnvironmentVariable({
               repository_id: repoId,
@@ -161,6 +165,10 @@ async function main(): Promise<void> {
               });
             });
         }
+
+        console.log(
+          `Setting variable ${varName} to repo variable from env ${envName}...`,
+        );
 
         return octokit.rest.actions
           .getRepoVariable({
