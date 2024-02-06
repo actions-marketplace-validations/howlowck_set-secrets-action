@@ -45,67 +45,53 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(7467);
 const libsodium_wrappers_1 = __importDefault(__nccwpck_require__(713));
-const securityToken = core.getInput("securityToken");
-const repoOrg = core.getInput("repoOrg");
-const repoName = core.getInput("repoName");
-const repoDescription = core.getInput("repoDescription");
-const isPublic = core.getInput("repoVisibility") === "public";
-const zipPath = core.getInput("zipPath");
-const envsToRepoSecretsRaw = core.getInput("envsToRepoSecrets");
-const envsToRepoSecrets = envsToRepoSecretsRaw
-    .split(",")
+const securityToken = core.getInput("security-token");
+const repoOwner = core.getInput("repo-owner");
+const repoName = core.getInput("repo-name");
+const secretsFromEnvRaw = core.getInput("secrets-from-env");
+const varsFromEnvRaw = core.getInput("vars-from-env");
+const envVarsToRepoSecrets = secretsFromEnvRaw
+    .split(" ")
     .map((_) => _.trim())
-    .filter((_) => !!_);
-const workplace = process.env.GITHUB_WORKSPACE;
+    .filter((_) => !!_)
+    .map((_) => {
+    const [secretName, envName] = _.split("=");
+    if (!secretName || !envName) {
+        throw new Error(`Invalid secret mapping: ${_}`);
+    }
+    return { secretName, envName };
+});
+const envVarsToRepoVariables = secretsFromEnvRaw
+    .split(" ")
+    .map((_) => _.trim())
+    .filter((_) => !!_)
+    .map((_) => {
+    const [varName, envName] = _.split("=");
+    if (!varName || !envName) {
+        throw new Error(`Invalid secret mapping: ${_}`);
+    }
+    return { varName, envName };
+});
 const octokit = new octokit_1.Octokit({
     auth: securityToken,
 });
 console.log("\nStarting create-repo-action...");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        let repoData;
-        if (repoOrg) {
-            console.log("Creating repo in org...");
-            repoData = yield octokit.rest.repos.createInOrg({
-                org: repoOrg,
-                name: repoName,
-                description: repoDescription,
-                private: !isPublic,
-                has_issues: true,
-                has_projects: true,
-                has_wiki: true,
-            });
-        }
-        else {
-            console.log("Creating repo in authenticated user...");
-            repoData = yield octokit.rest.repos.createForAuthenticatedUser({
-                name: repoName,
-                description: repoDescription,
-                private: !isPublic,
-                has_issues: true,
-                has_projects: true,
-                has_wiki: true,
-            });
-        }
-        const { clone_url: cloneUrl, html_url: url, owner: { login: ownerName }, } = repoData.data;
-        core.setOutput("repoUrl", url);
-        console.log(`✅ ${repoName} created successfully!`);
-        console.log("-----------------------------\n");
-        if (envsToRepoSecrets.length > 0) {
+        if (envVarsToRepoSecrets.length > 0) {
             console.log("Setting repo secrets...");
-            // wait for sodium to be ready
             yield libsodium_wrappers_1.default.ready;
             const sodium = libsodium_wrappers_1.default;
             const { data: { key: publicKey, key_id: publicKeyId }, } = yield octokit.rest.actions.getRepoPublicKey({
-                owner: ownerName,
+                owner: repoOwner,
                 repo: repoName,
             });
-            const secretRequests = envsToRepoSecrets.map((envName) => {
+            const secretRequests = envVarsToRepoSecrets.map(({ secretName, envName }) => {
                 const secretValue = process.env[envName];
                 if (!secretValue) {
                     throw new Error(`No such env: ${envName}`);
                 }
-                console.log(`Setting ${envName} to repo secret`);
+                console.log(`Setting ${secretName} to repo secret from env ${envName}...`);
                 let binaryKey = sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL);
                 let binarySec = sodium.from_string(secretValue);
                 //Encrypt the secret using LibSodium
@@ -113,9 +99,9 @@ function main() {
                 // Convert encrypted Uint8Array to Base64
                 let encryptedValue = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
                 return octokit.rest.actions.createOrUpdateRepoSecret({
-                    owner: ownerName,
+                    owner: repoOwner,
                     repo: repoName,
-                    secret_name: envName,
+                    secret_name: secretName,
                     encrypted_value: encryptedValue,
                     key_id: publicKeyId,
                 });
@@ -128,10 +114,42 @@ function main() {
             console.log("🔵 No secrets to set, skipping...");
             console.log("-----------------------------\n");
         }
-        console.log("===========================================");
-        console.log("🚀 Your newly created repo is ready to use");
-        console.log(cloneUrl);
-        console.log("===========================================\n");
+        if (envVarsToRepoVariables.length > 0) {
+            console.log("Setting repo variables...");
+            const variableRequests = envVarsToRepoVariables.map(({ varName, envName }) => {
+                const varValue = process.env[envName];
+                if (!varValue) {
+                    throw new Error(`No such env: ${envName}`);
+                }
+                console.log(`Setting ${varName} to repo variable from env ${envName}...`);
+                return octokit.rest.actions.getRepoVariable({
+                    owner: repoOwner,
+                    repo: repoName,
+                    name: varName
+                }).then(() => {
+                    return octokit.rest.actions.updateRepoVariable({
+                        owner: repoOwner,
+                        repo: repoName,
+                        name: varName,
+                        value: varValue
+                    });
+                }).catch(() => {
+                    return octokit.rest.actions.createRepoVariable({
+                        owner: repoOwner,
+                        repo: repoName,
+                        name: varName,
+                        value: varValue
+                    });
+                });
+            });
+            yield Promise.all(variableRequests);
+            console.log("✅ All variables set successfully!");
+            console.log("-----------------------------\n");
+        }
+        else {
+            console.log("🔵 No variables to set, skipping...");
+            console.log("-----------------------------\n");
+        }
     });
 }
 main();
