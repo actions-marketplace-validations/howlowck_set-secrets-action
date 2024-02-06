@@ -1,4 +1,4 @@
-# Set Repo Secrets
+# Set Repo Secrets and Variables
 
 This GitHub Action will set secrets to any repository that you have access to.
 
@@ -14,7 +14,11 @@ This GitHub Action will set secrets to any repository that you have access to.
 
 ### `secrets-from-env`
 
-**Required** Set secrets from environment variables, the format is "TARGET_SECRET_NAME:ENV_NAME", separated by spaces
+**Required** Set secrets from environment variables, the format is "TARGET_SECRET_NAME=ENV_NAME", separated by spaces
+
+### `vars-from-env`
+
+**Required** Set variables from environment variables, the format is "TARGET_VAR_NAME=ENV_NAME", separated by spaces
 
 ### `security-token`
 
