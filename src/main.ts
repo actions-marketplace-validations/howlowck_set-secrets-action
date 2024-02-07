@@ -100,16 +100,20 @@ async function main(): Promise<void> {
 
     const environments: string[] = Array.from(environmentSet);
 
-    const ensureEnvironments = environments.map((environment) => {
-      console.log(`Ensuring environment ${environment} exists`);
-      return octokit.rest.repos.createOrUpdateEnvironment({
-        owner: repoOwner,
-        repo: repoName,
-        environment_name: environment,
-      });
+    const {data: {environments : availableEnvironmentsData}} = await octokit.rest.repos.getAllEnvironments({
+      owner: repoOwner,
+      repo: repoName,
     });
 
-    await Promise.all(ensureEnvironments);
+    const availableEnvironments = availableEnvironmentsData?.map((env) => env.name) ?? [];
+
+    console.log(`Checking if ${environments.join(", ")} Environments are available in the repository...`);
+
+    const includesAllEnvironments = environments.every((env) => availableEnvironments.includes(env));
+
+    if (!includesAllEnvironments) {
+      throw new Error("Not all environments are available in the repository. Please create the environments first.");
+    }
 
     const secretRequests = envVarsToRepoSecrets.map(
       ({ secretName, envName, environment }) => {
