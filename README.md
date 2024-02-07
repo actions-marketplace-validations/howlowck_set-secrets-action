@@ -22,7 +22,16 @@ This GitHub Action will set secrets to any repository that you have access to.
 
 ### `security-token`
 
-**Required** The PAT or auth token for either you or your organization. It's this identity that sets the secrets to the target repository. The scope for Classic PAT should include "repo" and "workflows". For fine-grain PAT, set "secrets", "variables", "environments" to "read and write" permissions.
+**Required** The PAT or auth token for either you or your organization. It's this identity that sets the secrets to the target repository. The scope for Classic PAT should include "repo" and "workflows". For Fine Grain Token see below.
+
+## Required Permissions for Fine Grain Token
+
+* "secrets" (read/write) - To set repo-level secrets
+* "variables" (read/write) - To set repo-level variables
+* "environments" (read/write) - To set environment-level secrets and variables
+* "actions" (read/write) - To list out available environments
+
+> Note about Environments: **Environment names are case-sensitive.** And this action cannot create environments for you (to do so would require "Administration" permissions)
 
 ## Example Usage
 
