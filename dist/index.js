@@ -107,6 +107,27 @@ function main() {
                 owner: repoOwner,
                 repo: repoName,
             });
+            const environmentSet = new Set();
+            envVarsToRepoSecrets.forEach(({ environment }) => {
+                if (environment) {
+                    environmentSet.add(environment);
+                }
+            });
+            envVarsToRepoVariables.forEach(({ environment }) => {
+                if (environment) {
+                    environmentSet.add(environment);
+                }
+            });
+            const environments = Array.from(environmentSet);
+            const ensureEnvironments = environments.map((environment) => {
+                console.log(`Ensuring environment ${environment} exists`);
+                return octokit.rest.repos.createOrUpdateEnvironment({
+                    owner: repoOwner,
+                    repo: repoName,
+                    environment_name: environment,
+                });
+            });
+            yield Promise.all(ensureEnvironments);
             const secretRequests = envVarsToRepoSecrets.map(({ secretName, envName, environment }) => {
                 const secretValue = process.env[envName];
                 if (!secretValue) {

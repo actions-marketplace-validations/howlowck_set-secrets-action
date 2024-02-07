@@ -85,6 +85,32 @@ async function main(): Promise<void> {
       repo: repoName,
     });
 
+    const environmentSet: Set<string> = new Set();
+    envVarsToRepoSecrets.forEach(({ environment }) => {
+      if (environment) {
+        environmentSet.add(environment);
+      }
+    });
+
+    envVarsToRepoVariables.forEach(({ environment }) => {
+      if (environment) {
+        environmentSet.add(environment);
+      }
+    });
+
+    const environments: string[] = Array.from(environmentSet);
+
+    const ensureEnvironments = environments.map((environment) => {
+      console.log(`Ensuring environment ${environment} exists`);
+      return octokit.rest.repos.createOrUpdateEnvironment({
+        owner: repoOwner,
+        repo: repoName,
+        environment_name: environment,
+      });
+    });
+
+    await Promise.all(ensureEnvironments);
+
     const secretRequests = envVarsToRepoSecrets.map(
       ({ secretName, envName, environment }) => {
         const secretValue = process.env[envName];
