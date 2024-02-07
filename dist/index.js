@@ -63,7 +63,7 @@ const envVarsToRepoSecrets = secretsFromEnvRaw
         .split(":")
         .map((_) => _.trim())
         .filter((_) => !!_);
-    if (nameParts.length > 2) {
+    if (nameParts.length > 1) {
         const [environment, newSecretName] = nameParts;
         return { secretName: newSecretName, envName, environment };
     }
@@ -82,7 +82,7 @@ const envVarsToRepoVariables = varsFromEnvRaw
         .split(":")
         .map((_) => _.trim())
         .filter((_) => !!_);
-    if (nameParts.length > 2) {
+    if (nameParts.length > 1) {
         const [environment, newVarName] = nameParts;
         return { varName: newVarName, envName, environment };
     }
@@ -92,8 +92,6 @@ const octokit = new octokit_1.Octokit({
     auth: securityToken,
 });
 console.log("\nStarting create-repo-action...");
-console.log("secrets:", envVarsToRepoSecrets);
-console.log("variables:", envVarsToRepoVariables);
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const repoData = yield octokit.rest.repos.get({
