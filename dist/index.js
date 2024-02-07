@@ -93,6 +93,7 @@ const octokit = new octokit_1.Octokit({
 });
 console.log("\nStarting create-repo-action...");
 function main() {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const repoData = yield octokit.rest.repos.get({
             repo: repoName,
@@ -119,15 +120,16 @@ function main() {
                 }
             });
             const environments = Array.from(environmentSet);
-            const ensureEnvironments = environments.map((environment) => {
-                console.log(`Ensuring environment ${environment} exists`);
-                return octokit.rest.repos.createOrUpdateEnvironment({
-                    owner: repoOwner,
-                    repo: repoName,
-                    environment_name: environment,
-                });
+            const { data: { environments: availableEnvironmentsData }, } = yield octokit.rest.repos.getAllEnvironments({
+                owner: repoOwner,
+                repo: repoName,
             });
-            yield Promise.all(ensureEnvironments);
+            const availableEnvironments = (_a = availableEnvironmentsData === null || availableEnvironmentsData === void 0 ? void 0 : availableEnvironmentsData.map((env) => env.name)) !== null && _a !== void 0 ? _a : [];
+            console.log(`Checking if ${environments.join(", ")} Environments are available in the repository...`);
+            const includesAllEnvironments = environments.every((env) => availableEnvironments.includes(env));
+            if (!includesAllEnvironments) {
+                throw new Error("Not all environments are available in the repository. Please create the environments first.");
+            }
             const secretRequests = envVarsToRepoSecrets.map(({ secretName, envName, environment }) => {
                 const secretValue = process.env[envName];
                 if (!secretValue) {

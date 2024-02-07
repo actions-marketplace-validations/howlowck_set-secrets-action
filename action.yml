@@ -19,7 +19,7 @@ inputs:
     required: false
     default: ''
   security-token:
-    description: 'GitHub Security Token. It's this identity that sets the secrets to the target repository. The scope for Classic PAT should include "repo" and "workflows". For fine-grain PAT, set "actions", "secrets", "variables", "environments" to "read and write" permissions.'
+    description: 'GitHub Security Token. It is this identity that sets the secrets to the target repository. The scope for Classic PAT should include "repo" and "workflows". For fine-grain PAT, set "actions", "secrets", "variables", "environments" to "read and write" permissions.'
     required: true
 runs:
   using: 'node20'
